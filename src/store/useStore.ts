@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import type { Essay } from '../types/essay';
 import type { User } from '../types/user';
@@ -67,14 +68,14 @@ const defaultAdminSettings: AdminSettings = {
   pricing: {
     monthlyPrice: 1.99,
     yearlyPrice: 20,
-    yearlyDiscount: 4, // $24 - $20 = $4 discount
+    yearlyDiscount: 4,
   },
   referral: {
     requiredInvites: 10,
     rewardDurationWeeks: 2,
   },
   trial: {
-    duration: 30, // days
+    duration: 30,
     essayLimit: 3,
   },
   discountCodes: [],
@@ -102,14 +103,108 @@ export const useStore = create<Store>((set, get) => ({
   setCurrentEssay: (essay) => set({ currentEssay: essay }),
   toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
   
-  decrementTrialCount: () => set((state) => {
-    const newCount = Math.max(0, state.trialCount - 1);
-    if (newCount === 0 && !state.user?.premium) {
-      // Trigger premium upgrade modal
-      // Implementation will be added in UI components
+  decrementTrialCount: () => set((state) => ({
+    trialCount: Math.max(0, state.trialCount - 1)
+  })),
+
+  login: async (email: string, password: string) => {
+    if (email === 'admin' && password === 'Adma1004') {
+      set({ 
+        user: {
+          id: 'admin',
+          name: 'Administrator',
+          email: 'admin@example.com',
+          premium: true,
+          isAdmin: true,
+          trialCount: 0,
+          essays: [],
+          preferences: {
+            theme: 'light',
+            language: 'en',
+            notifications: true
+          },
+          stats: {
+            totalEssays: 0,
+            averageScore: 0,
+            improvementRate: 0,
+            lastActive: new Date()
+          }
+        },
+        isAdmin: true,
+        isAuthenticated: true
+      });
+      return true;
     }
-    return { trialCount: newCount };
-  }),
+
+    if (email && password.length >= 6) {
+      set({
+        user: {
+          id: `user-${Math.random().toString(36).substr(2, 9)}`,
+          name: email.split('@')[0],
+          email,
+          premium: false,
+          isAdmin: false,
+          trialCount: 3,
+          essays: [],
+          preferences: {
+            theme: 'light',
+            language: 'en',
+            notifications: true
+          },
+          stats: {
+            totalEssays: 0,
+            averageScore: 0,
+            improvementRate: 0,
+            lastActive: new Date()
+          }
+        },
+        isAuthenticated: true,
+        isAdmin: false
+      });
+      return true;
+    }
+    return false;
+  },
+
+  logout: () => {
+    set({ 
+      user: null, 
+      isAdmin: false,
+      isAuthenticated: false,
+      currentEssay: null,
+      trialCount: 3
+    });
+  },
+
+  signup: async (email: string, password: string) => {
+    if (email && password.length >= 6) {
+      set({
+        user: {
+          id: `user-${Math.random().toString(36).substr(2, 9)}`,
+          name: email.split('@')[0],
+          email,
+          premium: false,
+          isAdmin: false,
+          trialCount: 3,
+          essays: [],
+          preferences: {
+            theme: 'light',
+            language: 'en',
+            notifications: true
+          },
+          stats: {
+            totalEssays: 0,
+            averageScore: 0,
+            improvementRate: 0,
+            lastActive: new Date()
+          }
+        },
+        isAuthenticated: true
+      });
+      return true;
+    }
+    return false;
+  },
 
   startEssayTimer: () => {
     const { timerSettings } = get();
@@ -149,92 +244,20 @@ export const useStore = create<Store>((set, get) => ({
     return discountCode?.percentage || null;
   },
 
-  login: async (email, password) => {
-    // Admin login check
-    if (email === 'admin' && password === 'Adma1004') {
-      set({ 
-        user: {
-          id: 'admin',
-          email: 'admin',
-          name: 'Administrator',
-          premium: true,
-          trialCount: 0,
-          essays: [],
-          preferences: {
-            theme: 'light',
-            language: 'en',
-            notifications: true
-          },
-          stats: {
-            totalEssays: 0,
-            averageScore: 0,
-            improvementRate: 0,
-            lastActive: new Date()
-          },
-          isAdmin: true
-        },
-        isAdmin: true 
-      });
-      return true;
-    }
-
-    // Regular user login simulation
-    if (email && password.length >= 6) {
-      set({
-        user: {
-          id: 'user-' + Math.random().toString(36).substr(2, 9),
-          email,
-          name: email.split('@')[0],
-          premium: false,
-          trialCount: 3,
-          essays: [],
-          preferences: {
-            theme: 'light',
-            language: 'en',
-            notifications: true
-          },
-          stats: {
-            totalEssays: 0,
-            averageScore: 0,
-            improvementRate: 0,
-            lastActive: new Date()
+  addReferral: (userId: string, referrerId: string) => {
+    const { user } = get();
+    if (user && user.id === referrerId) {
+      const updatedUser = {
+        ...user,
+        referrals: [
+          ...(user.referrals || []),
+          {
+            name: userId,
+            joinDate: new Date().toISOString()
           }
-        },
-        isAdmin: false
-      });
-      return true;
-    }
-    return false;
-  },
-
-  logout: () => {
-    set({ 
-      user: null, 
-      isAdmin: false,
-      currentEssay: null,
-      trialCount: 3
-    });
-  },
-
-  addReferral: (userId, referrerId) => {
-    const { users } = get();
-    const referrer = users.find(u => u.id === referrerId);
-    
-    if (referrer) {
-      const updatedReferrer = {
-        ...referrer,
-        referrals: [...(referrer.referrals || []), userId]
+        ]
       };
-
-      if (updatedReferrer.referrals.length >= get().adminSettings.referral.requiredInvites) {
-        get().activateReferralReward(referrerId);
-      }
-
-      set(state => ({
-        users: state.users.map(u => 
-          u.id === referrerId ? updatedReferrer : u
-        )
-      }));
+      set({ user: updatedUser });
     }
   },
 
@@ -258,10 +281,5 @@ export const useStore = create<Store>((set, get) => ({
         { userId, startDate, endDate }
       ]
     }));
-  },
-
-  signup: async (email: string, password: string) => {
-    // Implement signup logic here
-    return true;
-  },
+  }
 }));
