@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import type { Essay, User, Subscription } from '../types/essay';
+import type { Essay } from '../types/essay';
+import type { User } from '../types/user';
 
 interface AdminSettings {
   pricing: {
@@ -28,12 +29,6 @@ interface ReferralReward {
   endDate: Date;
 }
 
-interface User {
-  id: string;
-  role: string;
-  // ... other user properties
-}
-
 interface Store {
   isAuthenticated: boolean;
   user: User | null;
@@ -57,6 +52,7 @@ interface Store {
   decrementTrialCount: () => void;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
+  signup: (email: string, password: string) => Promise<boolean>;
   startEssayTimer: () => void;
   stopEssayTimer: () => number;
   updateAdminSettings: (settings: Partial<AdminSettings>) => void;
@@ -174,7 +170,8 @@ export const useStore = create<Store>((set, get) => ({
             averageScore: 0,
             improvementRate: 0,
             lastActive: new Date()
-          }
+          },
+          isAdmin: true
         },
         isAdmin: true 
       });
@@ -261,5 +258,10 @@ export const useStore = create<Store>((set, get) => ({
         { userId, startDate, endDate }
       ]
     }));
-  }
+  },
+
+  signup: async (email: string, password: string) => {
+    // Implement signup logic here
+    return true;
+  },
 }));
